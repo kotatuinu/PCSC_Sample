@@ -44,6 +44,13 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="CAPDUCommand基本4情報の取得.cs" />
+    <Compile Include="CAPDUCommand認証用秘密鍵による署名.cs" />
+    <Compile Include="CAPDUCommandマイナンバー個人番号の取得.cs" />
+    <Compile Include="CAPDUCommand証明書の取得.cs" />
+    <Compile Include="CAPDUCommandカード認識.cs" />
+    <Compile Include="CAPDUResponse.cs" />
+    <Compile Include="IPCSCCardTest.cs" />
     <Compile Include="nfcapi.cs" />
     <Compile Include="pcsc_const.cs" />
     <Compile Include="Program.cs" />
