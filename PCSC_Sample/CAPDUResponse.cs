@@ -9,23 +9,13 @@ namespace PCSC_Sample
     public class CAPDUResponse
     {
         // ステータスワードSW1、SW2
-        struct RESP_SW2
+        public class RESP_SW2
         {
-            public RESP_SW2(byte sw2, string msg) : this()
+            public RESP_SW2()
             {
                 isError = true;
                 definedflg = true;
-                this.sw2 = sw2;
-                this.msg = msg;
             }
-            public RESP_SW2(byte sw2, bool definedflg, string msg) : this()
-            {
-                isError = true;
-                this.definedflg = definedflg;
-                this.sw2 = sw2;
-                this.msg = msg;
-            }
-
             public bool isError;
             public byte sw2;
             public bool definedflg;
@@ -132,7 +122,7 @@ namespace PCSC_Sample
                 // その結果を返す
                 if ((item.definedflg && item.sw2 == respData[respData.Length - 1]) || !item.definedflg)
                 {
-                    return new RESP_STATUS { isError = true, sw1 = respData[respData.Length - 2], sw2 = item.sw2, msg = item.msg };
+                    return new RESP_STATUS { isError = item.isError, sw1 = respData[respData.Length - 2], sw2 = item.sw2, msg = item.msg };
                 }
             }
 

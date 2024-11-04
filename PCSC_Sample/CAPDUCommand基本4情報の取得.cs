@@ -10,6 +10,7 @@ namespace PCSC_Sample
         public override void SCTest()
         {
             IntPtr hContext = IntPtr.Zero;
+            var resp = new CAPDUResponse();
 
             // ##################################################
             // 1. SCardEstablishContext
@@ -110,7 +111,8 @@ namespace PCSC_Sample
             {
                 throw new ApplicationException("NFCカードへの送信に失敗しました。code = " + ret);
             }
-            if (!(pcbRecvLength == 2 && recvBuffer[0] == 0x90 && recvBuffer[1] == 0x00))
+            //if (!(pcbRecvLength == 2 && recvBuffer[0] == 0x90 && recvBuffer[1] == 0x00))
+            if(resp.isError(recvBuffer))
             {
                 Console.WriteLine("ERROR");
                 return;
@@ -124,7 +126,8 @@ namespace PCSC_Sample
             {
                 throw new ApplicationException("NFCカードへの送信に失敗しました。code = " + ret);
             }
-            if (!(pcbRecvLength == 2 && recvBuffer[0] == 0x90 && recvBuffer[1] == 0x00))
+            //if (!(pcbRecvLength == 2 && recvBuffer[0] == 0x90 && recvBuffer[1] == 0x00))
+            if (resp.isError(recvBuffer))
             {
                 Console.WriteLine("ERROR");
                 return;
@@ -150,7 +153,8 @@ namespace PCSC_Sample
             {
                 throw new ApplicationException("NFCカードへの送信に失敗しました。code = " + ret);
             }
-            if (!(pcbRecvLength == 2 && recvBuffer[0] == 0x90 && recvBuffer[1] == 0x00))
+            //if (!(pcbRecvLength == 2 && recvBuffer[0] == 0x90 && recvBuffer[1] == 0x00))
+            if (resp.isError(recvBuffer))
             {
                 Console.WriteLine("ERROR");
                 return;
@@ -164,7 +168,8 @@ namespace PCSC_Sample
             {
                 throw new ApplicationException("NFCカードへの送信に失敗しました。code = " + ret);
             }
-            if (!(pcbRecvLength == 2 && recvBuffer[0] == 0x90 && recvBuffer[1] == 0x00))
+            //if (!(pcbRecvLength == 2 && recvBuffer[0] == 0x90 && recvBuffer[1] == 0x00))
+            if (resp.isError(recvBuffer))
             {
                 Console.WriteLine("ERROR");
                 return;
@@ -178,7 +183,8 @@ namespace PCSC_Sample
             {
                 throw new ApplicationException("NFCカードへの送信に失敗しました。code = " + ret);
             }
-            if (!(pcbRecvLength >= 2 && recvBuffer[pcbRecvLength-2] == 0x90 && recvBuffer[pcbRecvLength-1] == 0x00))
+            //if (!(pcbRecvLength >= 2 && recvBuffer[pcbRecvLength-2] == 0x90 && recvBuffer[pcbRecvLength-1] == 0x00))
+            if (resp.isError(recvBuffer))
             {
                 Console.WriteLine("ERROR");
                 return;
@@ -191,8 +197,9 @@ namespace PCSC_Sample
             sendBuffer[2] = 0x00;
             sendBuffer[3] = 0x00;
             sendBuffer[4] = (byte)(recvBuffer[0]+3);
-            
-            recvBuffer = new byte[recvBuffer[0] * 0x100 + recvBuffer[1] + 4 + 2];
+
+            //recvBuffer = new byte[recvBuffer[0] * 0x100 + recvBuffer[1] + 4 + 2];
+            recvBuffer = new byte[recvBuffer[0] + 3];
             pcbRecvLength = recvBuffer.Length;
             cbSendLength = sendBuffer.Length;
             ret = Api.SCardTransmit(hCard, pci, sendBuffer, cbSendLength, ioRecv, recvBuffer, ref pcbRecvLength);
@@ -200,7 +207,8 @@ namespace PCSC_Sample
             {
                 throw new ApplicationException("NFCカードへの送信に失敗しました。code = " + ret);
             }
-            if (!(pcbRecvLength >= 2 && recvBuffer[pcbRecvLength - 2] == 0x90 && recvBuffer[pcbRecvLength - 1] == 0x00))
+            //if (!(pcbRecvLength >= 2 && recvBuffer[pcbRecvLength - 2] == 0x90 && recvBuffer[pcbRecvLength - 1] == 0x00))
+            if (resp.isError(recvBuffer))
             {
                 Console.WriteLine("ERROR");
                 return;
