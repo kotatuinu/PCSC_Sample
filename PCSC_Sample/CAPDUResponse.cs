@@ -92,9 +92,9 @@ namespace PCSC_Sample
             {  0x6f, new List<RESP_SW2> {new RESP_SW2{ sw2 = 0x00, msg= "自己診断異常（検査誤り）。" }, } },
         };
 
-        public bool isError(byte[] respData)
+        public bool isError(byte[] respData, int RecvBuffLen)
         {
-            RESP_STATUS status = GetErrorInfo(respData);
+            RESP_STATUS status = GetErrorInfo(respData, RecvBuffLen);
             return status.isError;
         }
 
@@ -105,24 +105,24 @@ namespace PCSC_Sample
             public byte sw2;
             public string msg;
         };
-        public RESP_STATUS GetErrorInfo(byte[] respData)
-        { 
-            if (!STATUS_WORD.ContainsKey(respData[respData.Length - 2]))
+        public RESP_STATUS GetErrorInfo(byte[] respData, int RecvBuffLen)
+        {
+            if (!STATUS_WORD.ContainsKey(respData[RecvBuffLen - 2]))
             {
                 // 存在しないエラー
                 return new RESP_STATUS { isError = true };
 
             }
 
-            var sw2List = STATUS_WORD[respData[respData.Length - 2]];
+            var sw2List = STATUS_WORD[respData[RecvBuffLen - 2]];
             foreach (var item in sw2List)
             {
                 // SW2が定型値でありその値に一致する場合、
                 // または定型値を全て参照した後に定型値以外の定義がある場合、
                 // その結果を返す
-                if ((item.definedflg && item.sw2 == respData[respData.Length - 1]) || !item.definedflg)
+                if ((item.definedflg && item.sw2 == respData[RecvBuffLen-1]) || !item.definedflg)
                 {
-                    return new RESP_STATUS { isError = item.isError, sw1 = respData[respData.Length - 2], sw2 = item.sw2, msg = item.msg };
+                    return new RESP_STATUS { isError = item.isError, sw1 = respData[RecvBuffLen-2], sw2 = item.sw2, msg = item.msg };
                 }
             }
 

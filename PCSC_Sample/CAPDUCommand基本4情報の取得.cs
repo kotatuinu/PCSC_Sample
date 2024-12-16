@@ -112,7 +112,7 @@ namespace PCSC_Sample
                 throw new ApplicationException("NFCカードへの送信に失敗しました。code = " + ret);
             }
             //if (!(pcbRecvLength == 2 && recvBuffer[0] == 0x90 && recvBuffer[1] == 0x00))
-            if(resp.isError(recvBuffer))
+            if (resp.isError(recvBuffer, pcbRecvLength))
             {
                 Console.WriteLine("ERROR");
                 return;
@@ -127,7 +127,7 @@ namespace PCSC_Sample
                 throw new ApplicationException("NFCカードへの送信に失敗しました。code = " + ret);
             }
             //if (!(pcbRecvLength == 2 && recvBuffer[0] == 0x90 && recvBuffer[1] == 0x00))
-            if (resp.isError(recvBuffer))
+            if (resp.isError(recvBuffer, pcbRecvLength))
             {
                 Console.WriteLine("ERROR");
                 return;
@@ -154,7 +154,7 @@ namespace PCSC_Sample
                 throw new ApplicationException("NFCカードへの送信に失敗しました。code = " + ret);
             }
             //if (!(pcbRecvLength == 2 && recvBuffer[0] == 0x90 && recvBuffer[1] == 0x00))
-            if (resp.isError(recvBuffer))
+            if (resp.isError(recvBuffer, pcbRecvLength))
             {
                 Console.WriteLine("ERROR");
                 return;
@@ -169,7 +169,7 @@ namespace PCSC_Sample
                 throw new ApplicationException("NFCカードへの送信に失敗しました。code = " + ret);
             }
             //if (!(pcbRecvLength == 2 && recvBuffer[0] == 0x90 && recvBuffer[1] == 0x00))
-            if (resp.isError(recvBuffer))
+            if (resp.isError(recvBuffer, pcbRecvLength))
             {
                 Console.WriteLine("ERROR");
                 return;
@@ -184,7 +184,7 @@ namespace PCSC_Sample
                 throw new ApplicationException("NFCカードへの送信に失敗しました。code = " + ret);
             }
             //if (!(pcbRecvLength >= 2 && recvBuffer[pcbRecvLength-2] == 0x90 && recvBuffer[pcbRecvLength-1] == 0x00))
-            if (resp.isError(recvBuffer))
+            if (resp.isError(recvBuffer, pcbRecvLength))
             {
                 Console.WriteLine("ERROR");
                 return;
@@ -196,10 +196,10 @@ namespace PCSC_Sample
             sendBuffer[1] = 0xb0;
             sendBuffer[2] = 0x00;
             sendBuffer[3] = 0x00;
-            sendBuffer[4] = (byte)(recvBuffer[0]+3);
+            sendBuffer[4] = (byte)(recvBuffer[0] + 3);
 
             //recvBuffer = new byte[recvBuffer[0] * 0x100 + recvBuffer[1] + 4 + 2];
-            recvBuffer = new byte[recvBuffer[0] + 3];
+            recvBuffer = new byte[recvBuffer[0] + 2 + 3];
             pcbRecvLength = recvBuffer.Length;
             cbSendLength = sendBuffer.Length;
             ret = Api.SCardTransmit(hCard, pci, sendBuffer, cbSendLength, ioRecv, recvBuffer, ref pcbRecvLength);
@@ -208,14 +208,31 @@ namespace PCSC_Sample
                 throw new ApplicationException("NFCカードへの送信に失敗しました。code = " + ret);
             }
             //if (!(pcbRecvLength >= 2 && recvBuffer[pcbRecvLength - 2] == 0x90 && recvBuffer[pcbRecvLength - 1] == 0x00))
-            if (resp.isError(recvBuffer))
+            if (resp.isError(recvBuffer, pcbRecvLength))
             {
                 Console.WriteLine("ERROR");
                 return;
             }
 
+            // とりあえずデコード
             UTF8Encoding utf8 = new UTF8Encoding(true, true);
-            string en = utf8.GetString(recvBuffer, 4, recvBuffer.Length - 4);
+            int offset = 3 + 3 + recvBuffer[5] + 3;
+            int len = recvBuffer[offset - 1];
+            string name = utf8.GetString(recvBuffer, offset, len);
+
+            offset += len;
+            offset += 3;
+            len = recvBuffer[offset - 1];
+            string address = utf8.GetString(recvBuffer, offset, len);
+            offset += len;
+            offset += 3;
+            len = recvBuffer[offset - 1];
+            string barthday = utf8.GetString(recvBuffer, offset, len);
+
+            offset += len;
+            offset += 3;
+            len = recvBuffer[offset - 1];
+            string sex = utf8.GetString(recvBuffer, offset, len);
 
             // ##################################################
             // 5. SCardDisconnect
