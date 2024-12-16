@@ -111,7 +111,6 @@ namespace PCSC_Sample
             {
                 throw new ApplicationException("NFCカードへの送信に失敗しました。code = " + ret);
             }
-            //if (!(pcbRecvLength == 2 && recvBuffer[0] == 0x90 && recvBuffer[1] == 0x00))
             if (resp.isError(recvBuffer, pcbRecvLength))
             {
                 Console.WriteLine("ERROR");
@@ -126,7 +125,6 @@ namespace PCSC_Sample
             {
                 throw new ApplicationException("NFCカードへの送信に失敗しました。code = " + ret);
             }
-            //if (!(pcbRecvLength == 2 && recvBuffer[0] == 0x90 && recvBuffer[1] == 0x00))
             if (resp.isError(recvBuffer, pcbRecvLength))
             {
                 Console.WriteLine("ERROR");
@@ -153,7 +151,6 @@ namespace PCSC_Sample
             {
                 throw new ApplicationException("NFCカードへの送信に失敗しました。code = " + ret);
             }
-            //if (!(pcbRecvLength == 2 && recvBuffer[0] == 0x90 && recvBuffer[1] == 0x00))
             if (resp.isError(recvBuffer, pcbRecvLength))
             {
                 Console.WriteLine("ERROR");
@@ -168,7 +165,6 @@ namespace PCSC_Sample
             {
                 throw new ApplicationException("NFCカードへの送信に失敗しました。code = " + ret);
             }
-            //if (!(pcbRecvLength == 2 && recvBuffer[0] == 0x90 && recvBuffer[1] == 0x00))
             if (resp.isError(recvBuffer, pcbRecvLength))
             {
                 Console.WriteLine("ERROR");
@@ -183,14 +179,13 @@ namespace PCSC_Sample
             {
                 throw new ApplicationException("NFCカードへの送信に失敗しました。code = " + ret);
             }
-            //if (!(pcbRecvLength >= 2 && recvBuffer[pcbRecvLength-2] == 0x90 && recvBuffer[pcbRecvLength-1] == 0x00))
             if (resp.isError(recvBuffer, pcbRecvLength))
             {
                 Console.WriteLine("ERROR");
                 return;
             }
 
-            //sendBuffer = new byte[] { 0x00, 0xb0, 0x00, 0x00, 0x71 };  // ← 基本4情報の読み取り（3 + 0x68）
+            // 基本4情報の読み取り（データ長：3 + 0x68）
             sendBuffer = new byte[4 + pcbRecvLength - 2];
             sendBuffer[0] = 0x00;
             sendBuffer[1] = 0xb0;
@@ -198,7 +193,6 @@ namespace PCSC_Sample
             sendBuffer[3] = 0x00;
             sendBuffer[4] = (byte)(recvBuffer[0] + 3);
 
-            //recvBuffer = new byte[recvBuffer[0] * 0x100 + recvBuffer[1] + 4 + 2];
             recvBuffer = new byte[recvBuffer[0] + 2 + 3];
             pcbRecvLength = recvBuffer.Length;
             cbSendLength = sendBuffer.Length;
@@ -207,28 +201,29 @@ namespace PCSC_Sample
             {
                 throw new ApplicationException("NFCカードへの送信に失敗しました。code = " + ret);
             }
-            //if (!(pcbRecvLength >= 2 && recvBuffer[pcbRecvLength - 2] == 0x90 && recvBuffer[pcbRecvLength - 1] == 0x00))
             if (resp.isError(recvBuffer, pcbRecvLength))
             {
                 Console.WriteLine("ERROR");
                 return;
             }
 
-            // とりあえずデコード
+            // レスポンスデータをデコード
             UTF8Encoding utf8 = new UTF8Encoding(true, true);
+            // 氏名
             int offset = 3 + 3 + recvBuffer[5] + 3;
             int len = recvBuffer[offset - 1];
             string name = utf8.GetString(recvBuffer, offset, len);
-
+            // 住所
             offset += len;
             offset += 3;
             len = recvBuffer[offset - 1];
             string address = utf8.GetString(recvBuffer, offset, len);
+            // 誕生日（西暦 yyyymmdd）
             offset += len;
             offset += 3;
             len = recvBuffer[offset - 1];
             string barthday = utf8.GetString(recvBuffer, offset, len);
-
+            // 性別（0:不明、1:男性、2:女性、9:摘要不能）
             offset += len;
             offset += 3;
             len = recvBuffer[offset - 1];
