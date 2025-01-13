@@ -1,12 +1,75 @@
 ﻿using PCSC;
 using System;
 using System.Collections.Generic;
-using System.Linq.Expressions;
+using System.Dynamic;
+using System.Net.Http.Headers;
 using System.Text;
 
 namespace PCSC_Sample
 {
-    class CAPDUCommandカード認識 : IPCSCCardTest
+    class DATA_AP基本情報
+    {
+        public byte[] tag_; // TAG[2byte] FF40
+        public byte[] tag {
+            get => tag_;
+            private set => tag_ = value;
+        }
+        public int len_;    // Len[1byte]
+        public int len
+        {
+            get => len_;
+            private set => len_ = value;
+        }
+        //  TAG[2byte] DF41
+        //  Len[1byte]
+        //  Value[4byte]
+        //   AP仕様バージョン[1byte]
+        //   拡張Lc/Le対応種別[1byte]
+        //   ベンダ分類[1byte]
+        //   ベンダ任意項目[1byte]
+        //  TAG[2byte] DF42
+        //  Len[1byte]
+        //  Value 証明書検証用公開鍵（署名検証用）の鍵ID[1byte]
+        //  Value その他データ
+        public List<ClassTLV> data_ = new List<ClassTLV>();
+        public List<ClassTLV> data
+        {
+            get => data_;
+        }
+
+        public static DATA_AP基本情報 bulde(byte[] data)
+        {
+            var obj = new DATA_AP基本情報();
+            int offset = 0;
+            var data1 = ClassTLV.create(data, 2, ref offset);
+            obj.tag = data1.tag;
+            obj.len = data1.len;
+
+            offset = 0;
+            var data1_1 = ClassTLV.create(data1.val, 2, ref offset);
+            obj.data_.Add(data1_1);
+            var data1_2 = ClassTLV.create(data1.val, 2, ref offset);
+            obj.data_.Add(data1_2);
+            var data1_3 = ClassTLV.create(data1.val, 2, ref offset);
+            obj.data_.Add(data1_3);
+
+            return obj;
+        }
+
+        public void dispData()
+        {
+            Console.Write("TAG:");
+            ClassTLV.dispRowData(tag);
+            Console.WriteLine("LEN:{0:X2}", len);
+            foreach (var obj in data)
+            {
+                ClassTLV.dispData(obj);
+            }
+        }
+    }
+
+    // AP基本情報の取得
+    class CAPDUCommandAP基本情報の取得 : IPCSCCardTest
     {
         public override void SCTest()
         {
@@ -67,21 +130,12 @@ namespace PCSC_Sample
             UnicodeEncoding unicodeEncoding = new UnicodeEncoding();
             string readerNameMultiString = unicodeEncoding.GetString(mszReaders);
 
-            var readerList = new List<string>();
-            int offset = 0;
             // 認識したNDCリーダの最初の1台を使用
             int nullindex = readerNameMultiString.IndexOf((char)0);
-            while(nullindex > 0)
-            {
-                var readerName = readerNameMultiString.Substring(offset, nullindex - offset);
-                if (readerName.Length > 0)
-                {
-                    readerList.Add(readerName);
-                }
-                offset = nullindex + 1;
-                nullindex = readerNameMultiString.IndexOf((char)0, offset);
-            }
-            Console.WriteLine("　NFCリーダを検出しました。 " + readerList[0]);
+            var readerName = readerNameMultiString.Substring(0, nullindex);
+            Console.WriteLine("　NFCリーダを検出しました。 " + readerName);
+
+
 
             // ##################################################
             // 3. SCardConnect
@@ -89,7 +143,7 @@ namespace PCSC_Sample
             Console.WriteLine("***** 3. SCardConnect *****");
             IntPtr hCard = IntPtr.Zero;
             IntPtr activeProtocol = IntPtr.Zero;
-            ret = Api.SCardConnect(hContext, readerList[0], Constant.SCARD_SHARE_SHARED, Constant.SCARD_PROTOCOL_T1, ref hCard, ref activeProtocol);
+            ret = Api.SCardConnect(hContext, readerName, Constant.SCARD_SHARE_SHARED, Constant.SCARD_PROTOCOL_T1, ref hCard, ref activeProtocol);
             if (ret != Constant.SCARD_S_SUCCESS)
             {
                 throw new ApplicationException("カードに接続できません。code = " + ret);
@@ -112,7 +166,7 @@ namespace PCSC_Sample
 
             uint maxRecvDataLen = 256;
             var recvBuffer = new byte[maxRecvDataLen + 2];
-            var sendBuffer = new byte[] { 0xff, 0xca, 0x00, 0x00, 0x00 };  // ← IDmを取得するコマンド
+            var sendBuffer = new byte[] { 0x00, 0xa4, 0x04, 0x0c, 0x0a, 0xd3, 0x92, 0x10, 0x00, 0x31, 0x00, 0x01, 0x01, 0x04, 0x08 };  // ← 券面入力補助AP (DF)
             int pcbRecvLength = recvBuffer.Length;
             int cbSendLength = sendBuffer.Length;
             ret = Api.SCardTransmit(hCard, pci, sendBuffer, cbSendLength, ioRecv, recvBuffer, ref pcbRecvLength);
@@ -126,13 +180,22 @@ namespace PCSC_Sample
                 return;
             }
 
-            // 受信データからIDmを抽出する
-            // recvBuffer = IDm + SW1 + SW2 (SW = StatusWord)
-            // SW1 = 0x90 (144) SW1 = 0x00 (0) で正常だが、ここでは見ていない
-            string cardId = BitConverter.ToString(recvBuffer, 0, pcbRecvLength - 2);
-            Console.WriteLine("　カードからデータを取得しました。");
-            Console.WriteLine("　【IDm】：" + cardId);
+            sendBuffer = new byte[] { 0x00, 0xb0, 0x85, 0x00, 0xff };  // ← AP基本情報バイト数取得
+            pcbRecvLength = recvBuffer.Length;
+            cbSendLength = sendBuffer.Length;
+            ret = Api.SCardTransmit(hCard, pci, sendBuffer, cbSendLength, ioRecv, recvBuffer, ref pcbRecvLength);
+            if (ret != Constant.SCARD_S_SUCCESS)
+            {
+                throw new ApplicationException("NFCカードへの送信に失敗しました。code = " + ret);
+            }
+            if (resp.isError(recvBuffer, pcbRecvLength))
+            {
+                Console.WriteLine("ERROR");
+                return;
+            }
 
+            var obj = DATA_AP基本情報.bulde(recvBuffer);
+            obj.dispData();
 
             // ##################################################
             // 5. SCardDisconnect

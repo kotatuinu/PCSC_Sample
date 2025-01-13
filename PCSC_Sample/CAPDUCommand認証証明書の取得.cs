@@ -4,13 +4,13 @@ using System.Text;
 
 namespace PCSC_Sample
 {
-    class CAPDUCommand証明書の取得 : IPCSCCardTest
+    // 証明書の取得
+    class CAPDUCommand認証証明書の取得 : IPCSCCardTest
     {
-        // 証明書の取得
-
         public override void SCTest()
         {
             IntPtr hContext = IntPtr.Zero;
+            var resp = new CAPDUResponse();
 
             // ##################################################
             // 1. SCardEstablishContext
@@ -92,25 +92,28 @@ namespace PCSC_Sample
             // 4. SCardTransmit
             // ##################################################
             Console.WriteLine("***** 4. SCardTransmit *****");
-            uint maxRecvDataLen = 256;
-            var recvBuffer = new byte[maxRecvDataLen + 2];
-            //var sendBuffer = new byte[] { 0xff, 0xca, 0x00, 0x00, 0x00 };  // ← IDmを取得するコマンド
-            var sendBuffer = new byte[] { 0x00, 0xa4, 0x04, 0x0c, 0x0a, 0xd3, 0x92, 0xf0, 0x00, 0x26, 0x01, 0x00, 0x00, 0x00, 0x01 };  // ← 公的個人認証AP
 
             Api.SCARD_IO_REQUEST ioRecv = new Api.SCARD_IO_REQUEST();
             ioRecv.cbPciLength = 255;
-
-            int pcbRecvLength = recvBuffer.Length;
-            int cbSendLength = sendBuffer.Length;
 
             IntPtr handle = Api.LoadLibrary("Winscard.dll");
             IntPtr pci = Api.GetProcAddress(handle, "g_rgSCardT1Pci");
             Api.FreeLibrary(handle);
 
+            uint maxRecvDataLen = 256;
+            var recvBuffer = new byte[maxRecvDataLen + 2];
+            var sendBuffer = new byte[] { 0x00, 0xa4, 0x04, 0x0c, 0x0a, 0xd3, 0x92, 0xf0, 0x00, 0x26, 0x01, 0x00, 0x00, 0x00, 0x01 };  // ← 公的個人認証AP
+            int pcbRecvLength = recvBuffer.Length;
+            int cbSendLength = sendBuffer.Length;
             ret = Api.SCardTransmit(hCard, pci, sendBuffer, cbSendLength, ioRecv, recvBuffer, ref pcbRecvLength);
             if (ret != Constant.SCARD_S_SUCCESS)
             {
                 throw new ApplicationException("NFCカードへの送信に失敗しました。code = " + ret);
+            }
+            if (resp.isError(recvBuffer, pcbRecvLength))
+            {
+                Console.WriteLine("ERROR");
+                return;
             }
 
             sendBuffer = new byte[] { 0x00, 0xa4, 0x02, 0x0c, 0x02, 0x00, 0x0a };  // ← 認証用証明書
@@ -121,6 +124,11 @@ namespace PCSC_Sample
             {
                 throw new ApplicationException("NFCカードへの送信に失敗しました。code = " + ret);
             }
+            if (resp.isError(recvBuffer, pcbRecvLength))
+            {
+                Console.WriteLine("ERROR");
+                return;
+            }
 
             sendBuffer = new byte[] { 0x00, 0xb0, 0x00, 0x00, 0x04 };  // ← 証明書バイト数取得
             pcbRecvLength = recvBuffer.Length;
@@ -130,8 +138,13 @@ namespace PCSC_Sample
             {
                 throw new ApplicationException("NFCカードへの送信に失敗しました。code = " + ret);
             }
+            if (resp.isError(recvBuffer, pcbRecvLength))
+            {
+                Console.WriteLine("ERROR");
+                return;
+            }
 
-            sendBuffer = new byte[] { 0x00, 0xb0, 0x00, 0x04, 0x00, recvBuffer[2], recvBuffer[3] };  // ← 人商用証明書
+            sendBuffer = new byte[] { 0x00, 0xb0, 0x00, 0x04, 0x00, recvBuffer[2], recvBuffer[3] };  // ← 認証用証明書
             recvBuffer = new byte[recvBuffer[2] * 0x100 + recvBuffer[3] + 4 + 2];
             pcbRecvLength = recvBuffer.Length;
             cbSendLength = sendBuffer.Length;
@@ -140,7 +153,13 @@ namespace PCSC_Sample
             {
                 throw new ApplicationException("NFCカードへの送信に失敗しました。code = " + ret);
             }
+            if (resp.isError(recvBuffer, pcbRecvLength))
+            {
+                Console.WriteLine("ERROR");
+                return;
+            }
 
+            ClassTLV.dispRowData(recvBuffer);
 
             // ##################################################
             // 5. SCardDisconnect

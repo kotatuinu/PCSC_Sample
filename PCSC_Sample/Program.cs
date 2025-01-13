@@ -16,7 +16,7 @@ namespace PCSC_Sample
                     obj = new CAPDUCommandカード認識();
                     break;
                 case "2":
-                    obj = new CAPDUCommand証明書の取得();
+                    obj = new CAPDUCommand認証証明書の取得();
                     break;
                 case "3":
                     paramLiist = readParamFile(args[1]);
@@ -27,11 +27,26 @@ namespace PCSC_Sample
                     paramLiist = readParamFile(args[1]);
                     obj = new CAPDUCommand認証用秘密鍵による署名();
                     obj.setParam("password", paramLiist[Int32.Parse(args[2])]);
+                    obj.setParam("data", args[3]);
                     break;
                 case "5":
                     paramLiist = readParamFile(args[1]);
                     obj = new CAPDUCommand基本4情報の取得();
                     obj.setParam("password", paramLiist[Int32.Parse(args[2])]);
+                    break;
+                case "6":
+                    paramLiist = readParamFile(args[1]);
+                    obj = new CAPDUCommand署名証明書の取得();
+                    obj.setParam("password", paramLiist[Int32.Parse(args[2])]);
+                    break;
+                case "7":
+                    paramLiist = readParamFile(args[1]);
+                    obj = new CAPDUCommand署名用秘密鍵による署名();
+                    obj.setParam("password", paramLiist[Int32.Parse(args[2])]);
+                    obj.setParam("data", args[3]);
+                    break;
+                case "8":
+                    obj = new CAPDUCommandAP基本情報の取得();
                     break;
                 default:
                     return;

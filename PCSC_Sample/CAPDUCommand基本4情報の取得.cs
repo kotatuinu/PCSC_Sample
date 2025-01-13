@@ -102,8 +102,7 @@ namespace PCSC_Sample
 
             uint maxRecvDataLen = 256;
             var recvBuffer = new byte[maxRecvDataLen + 2];
-            byte[] sendBuffer;
-            sendBuffer = new byte[] { 0x00, 0xa4, 0x04, 0x0c, 0x0a, 0xd3, 0x92, 0x10, 0x00, 0x31, 0x00, 0x01, 0x01, 0x04, 0x08 };  // ← 券面入力補助AP (DF)
+            var sendBuffer = new byte[] { 0x00, 0xa4, 0x04, 0x0c, 0x0a, 0xd3, 0x92, 0x10, 0x00, 0x31, 0x00, 0x01, 0x01, 0x04, 0x08 };  // ← 券面入力補助AP (DF)
             int pcbRecvLength = recvBuffer.Length;
             int cbSendLength = sendBuffer.Length;
             ret = Api.SCardTransmit(hCard, pci, sendBuffer, cbSendLength, ioRecv, recvBuffer, ref pcbRecvLength);

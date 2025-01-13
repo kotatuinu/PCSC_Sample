@@ -1,12 +1,11 @@
 ﻿using PCSC;
 using System;
-using System.Collections.Generic;
-using System.Linq.Expressions;
 using System.Text;
 
 namespace PCSC_Sample
 {
-    class CAPDUCommandカード認識 : IPCSCCardTest
+    // 署名用秘密鍵による署名
+    class CAPDUCommand署名用秘密鍵による署名 : IPCSCCardTest
     {
         public override void SCTest()
         {
@@ -67,21 +66,12 @@ namespace PCSC_Sample
             UnicodeEncoding unicodeEncoding = new UnicodeEncoding();
             string readerNameMultiString = unicodeEncoding.GetString(mszReaders);
 
-            var readerList = new List<string>();
-            int offset = 0;
             // 認識したNDCリーダの最初の1台を使用
             int nullindex = readerNameMultiString.IndexOf((char)0);
-            while(nullindex > 0)
-            {
-                var readerName = readerNameMultiString.Substring(offset, nullindex - offset);
-                if (readerName.Length > 0)
-                {
-                    readerList.Add(readerName);
-                }
-                offset = nullindex + 1;
-                nullindex = readerNameMultiString.IndexOf((char)0, offset);
-            }
-            Console.WriteLine("　NFCリーダを検出しました。 " + readerList[0]);
+            var readerName = readerNameMultiString.Substring(0, nullindex);
+            Console.WriteLine("　NFCリーダを検出しました。 " + readerName);
+
+
 
             // ##################################################
             // 3. SCardConnect
@@ -89,7 +79,7 @@ namespace PCSC_Sample
             Console.WriteLine("***** 3. SCardConnect *****");
             IntPtr hCard = IntPtr.Zero;
             IntPtr activeProtocol = IntPtr.Zero;
-            ret = Api.SCardConnect(hContext, readerList[0], Constant.SCARD_SHARE_SHARED, Constant.SCARD_PROTOCOL_T1, ref hCard, ref activeProtocol);
+            ret = Api.SCardConnect(hContext, readerName, Constant.SCARD_SHARE_SHARED, Constant.SCARD_PROTOCOL_T1, ref hCard, ref activeProtocol);
             if (ret != Constant.SCARD_S_SUCCESS)
             {
                 throw new ApplicationException("カードに接続できません。code = " + ret);
@@ -112,7 +102,7 @@ namespace PCSC_Sample
 
             uint maxRecvDataLen = 256;
             var recvBuffer = new byte[maxRecvDataLen + 2];
-            var sendBuffer = new byte[] { 0xff, 0xca, 0x00, 0x00, 0x00 };  // ← IDmを取得するコマンド
+            var sendBuffer = new byte[] { 0x00, 0xa4, 0x04, 0x0c, 0x0a, 0xd3, 0x92, 0xf0, 0x00, 0x26, 0x01, 0x00, 0x00, 0x00, 0x01 };  // ← 公的個人署名AP
             int pcbRecvLength = recvBuffer.Length;
             int cbSendLength = sendBuffer.Length;
             ret = Api.SCardTransmit(hCard, pci, sendBuffer, cbSendLength, ioRecv, recvBuffer, ref pcbRecvLength);
@@ -126,13 +116,95 @@ namespace PCSC_Sample
                 return;
             }
 
-            // 受信データからIDmを抽出する
-            // recvBuffer = IDm + SW1 + SW2 (SW = StatusWord)
-            // SW1 = 0x90 (144) SW1 = 0x00 (0) で正常だが、ここでは見ていない
-            string cardId = BitConverter.ToString(recvBuffer, 0, pcbRecvLength - 2);
-            Console.WriteLine("　カードからデータを取得しました。");
-            Console.WriteLine("　【IDm】：" + cardId);
+            sendBuffer = new byte[] { 0x00, 0xa4, 0x02, 0x0c, 0x02, 0x00, 0x1B };  // ← 署名用PIN
+            pcbRecvLength = recvBuffer.Length;
+            cbSendLength = sendBuffer.Length;
+            ret = Api.SCardTransmit(hCard, pci, sendBuffer, cbSendLength, ioRecv, recvBuffer, ref pcbRecvLength);
+            if (ret != Constant.SCARD_S_SUCCESS)
+            {
+                throw new ApplicationException("NFCカードへの送信に失敗しました。code = " + ret);
+            }
+            if (resp.isError(recvBuffer, pcbRecvLength))
+            {
+                Console.WriteLine("ERROR");
+                return;
+            }
 
+            byte[] data = System.Text.Encoding.ASCII.GetBytes(params_["password"].ToString());
+            sendBuffer = new byte[data.Length + 5];// ← 署名用PINパスワード
+            sendBuffer[0] = 0x00;
+            sendBuffer[1] = 0x20;
+            sendBuffer[2] = 0x00;
+            sendBuffer[3] = 0x80;
+            sendBuffer[4] = (byte)data.Length;  // 6～16バイト
+            int idx = 0;
+            foreach (var b in data)
+            {
+                sendBuffer[idx + 5] = data[idx];
+                idx++;
+            }
+            pcbRecvLength = recvBuffer.Length;
+            cbSendLength = sendBuffer.Length;
+            ret = Api.SCardTransmit(hCard, pci, sendBuffer, cbSendLength, ioRecv, recvBuffer, ref pcbRecvLength);
+            if (ret != Constant.SCARD_S_SUCCESS)
+            {
+                throw new ApplicationException("NFCカードへの送信に失敗しました。code = " + ret);
+            }
+            if (resp.isError(recvBuffer, pcbRecvLength))
+            {
+                Console.WriteLine("ERROR");
+                return;
+            }
+
+            sendBuffer = new byte[] { 0x00, 0xa4, 0x02, 0x0c, 0x02, 0x00, 0x1A };  // ← 署名用秘密鍵
+            pcbRecvLength = recvBuffer.Length;
+            cbSendLength = sendBuffer.Length;
+            ret = Api.SCardTransmit(hCard, pci, sendBuffer, cbSendLength, ioRecv, recvBuffer, ref pcbRecvLength);
+            if (ret != Constant.SCARD_S_SUCCESS)
+            {
+                throw new ApplicationException("NFCカードへの送信に失敗しました。code = " + ret);
+            }
+            if (resp.isError(recvBuffer, pcbRecvLength))
+            {
+                Console.WriteLine("ERROR");
+                return;
+            }
+
+            //sendBuffer = new byte[] { 0x80, 0x2a, 0x00, 0x80, 0x33, 0x00, 0x00, 0x00, 0x00, 0x00 };  // ← 署名付与
+            //data = System.Text.Encoding.ASCII.GetBytes("test");
+            //sendBuffer[5] = data[0];
+            //sendBuffer[6] = data[1];
+            //sendBuffer[7] = data[2];
+            //sendBuffer[8] = data[3];
+            // 暗号化するデータの設定 sendBuffer（byte配列）のサイズは、0x7f-5=122以内を想定
+            data = System.Text.Encoding.ASCII.GetBytes(params_["data"].ToString());
+            sendBuffer = new byte[data.Length + 6];
+            sendBuffer[0] = 0x80;
+            sendBuffer[1] = 0x2a;
+            sendBuffer[2] = 0x00;
+            sendBuffer[3] = 0x80;
+            sendBuffer[4] = (byte)data.Length;
+            idx = 0;
+            foreach (var b in data)
+            {
+                sendBuffer[idx + 5] = data[idx];
+                idx++;
+            }
+            sendBuffer[idx + 5] = 0x00;
+            pcbRecvLength = recvBuffer.Length;
+            cbSendLength = sendBuffer.Length;
+            ret = Api.SCardTransmit(hCard, pci, sendBuffer, cbSendLength, ioRecv, recvBuffer, ref pcbRecvLength);
+            if (ret != Constant.SCARD_S_SUCCESS)
+            {
+                throw new ApplicationException("NFCカードへの送信に失敗しました。code = " + ret);
+            }
+            if (resp.isError(recvBuffer, pcbRecvLength))
+            {
+                Console.WriteLine("ERROR");
+                return;
+            }
+
+            ClassTLV.dispRowData(recvBuffer);
 
             // ##################################################
             // 5. SCardDisconnect

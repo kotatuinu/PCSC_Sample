@@ -10,6 +10,7 @@ namespace PCSC_Sample
         public override void SCTest()
         {
             IntPtr hContext = IntPtr.Zero;
+            var resp = new CAPDUResponse();
 
             // ##################################################
             // 1. SCardEstablishContext
@@ -101,15 +102,18 @@ namespace PCSC_Sample
 
             uint maxRecvDataLen = 256;
             var recvBuffer = new byte[maxRecvDataLen + 2];
-            //var sendBuffer = new byte[] { 0xff, 0xca, 0x00, 0x00, 0x00 };  // ← IDmを取得するコマンド
-            byte[] sendBuffer;
-            sendBuffer = new byte[] { 0x00, 0xa4, 0x04, 0x0c, 0x0a, 0xd3, 0x92, 0x10, 0x00, 0x31, 0x00, 0x01, 0x01, 0x04, 0x08 };  // ← 券面入力補助AP (DF)
+            var sendBuffer = new byte[] { 0x00, 0xa4, 0x04, 0x0c, 0x0a, 0xd3, 0x92, 0x10, 0x00, 0x31, 0x00, 0x01, 0x01, 0x04, 0x08 };  // ← 券面入力補助AP (DF)
             int pcbRecvLength = recvBuffer.Length;
             int cbSendLength = sendBuffer.Length;
             ret = Api.SCardTransmit(hCard, pci, sendBuffer, cbSendLength, ioRecv, recvBuffer, ref pcbRecvLength);
             if (ret != Constant.SCARD_S_SUCCESS)
             {
                 throw new ApplicationException("NFCカードへの送信に失敗しました。code = " + ret);
+            }
+            if (resp.isError(recvBuffer, pcbRecvLength))
+            {
+                Console.WriteLine("ERROR");
+                return;
             }
 
             sendBuffer = new byte[] { 0x00, 0xa4, 0x02, 0x0c, 0x02, 0x00, 0x11 };  // ← 券面入力補助用PIN (EF)
@@ -119,6 +123,11 @@ namespace PCSC_Sample
             if (ret != Constant.SCARD_S_SUCCESS)
             {
                 throw new ApplicationException("NFCカードへの送信に失敗しました。code = " + ret);
+            }
+            if (resp.isError(recvBuffer, pcbRecvLength))
+            {
+                Console.WriteLine("ERROR");
+                return;
             }
 
             byte[] data = System.Text.Encoding.ASCII.GetBytes(params_["password"].ToString());
@@ -141,6 +150,11 @@ namespace PCSC_Sample
             {
                 throw new ApplicationException("NFCカードへの送信に失敗しました。code = " + ret);
             }
+            if (resp.isError(recvBuffer, pcbRecvLength))
+            {
+                Console.WriteLine("ERROR");
+                return;
+            }
 
             sendBuffer = new byte[] { 0x00, 0xa4, 0x02, 0x0c, 0x02, 0x00, 0x01 };  // ← マイナンバー (EF)
             pcbRecvLength = recvBuffer.Length;
@@ -150,6 +164,11 @@ namespace PCSC_Sample
             {
                 throw new ApplicationException("NFCカードへの送信に失敗しました。code = " + ret);
             }
+            if (resp.isError(recvBuffer, pcbRecvLength))
+            {
+                Console.WriteLine("ERROR");
+                return;
+            }
 
             sendBuffer = new byte[] { 0x00, 0xb0, 0x00, 0x00, 0x00 };  // ← マイナンバー読み取り（4～15バイト目が個人番号）
             pcbRecvLength = recvBuffer.Length;
@@ -158,6 +177,11 @@ namespace PCSC_Sample
             if (ret != Constant.SCARD_S_SUCCESS)
             {
                 throw new ApplicationException("NFCカードへの送信に失敗しました。code = " + ret);
+            }
+            if (resp.isError(recvBuffer, pcbRecvLength))
+            {
+                Console.WriteLine("ERROR");
+                return;
             }
 
             // ##################################################
